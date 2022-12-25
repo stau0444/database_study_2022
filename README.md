@@ -114,7 +114,8 @@ mysql> delimiter ;
 - transaction들이 겹치지 않고 순차적으로 실행되는 스케쥴을 serial schedule이라 한다.
 - transaction들이 겹쳐서 순차적이지 않게 실행되는 스케쥴을 non-serial schedule이라 한다.
 - non-serial schedule은 non-block으로 동작하기 때문에 동시성이 높아 같은 시간 동안 더많은 transaction들을 처리할 수 있다.
-- 하지만 non-serial schedule을 사용할 경우 데이터의 불일치가 일어날 수 있기 떄문에 Concurrency control(동시성 제어)가 필요하다
+- 하지만 non-serial schedule을 사용할 경우 데이터의 불일치가 일어나는 현상이 일어날 수 있다.
+- 개발자는 Isolation level을 통해 데이터의 정합성과 , 처리 속도 사이에서 trade 할 수 있다.
 
 
 #### `conflict`
@@ -131,7 +132,8 @@ mysql> delimiter ;
 
 - serial-schedule만 사용하기엔 성능에 문제가 있기 때문에 non-serial-schedule을 같이 사용할 수 있는 방법이 필요했다
 - 하지만 non-serial-schedule은 데이터 정합성에 문제가 생길 수 있기 때문에 이를 해결하기 위해 
-- conflict serializable한 non-serial-schedule만 실행을 허용하도록하는 방식을 사용하여 충돌을 막는다.
+- conflict serializable한 non-serial-schedule만 실행을 허용하도록하는 방식을 사용하여 충돌을 막으며
+- 이러한 두 스캐쥴을 conflict equipvalent 하다 한다.
 
 #### `conflict equipvalent의 조건`
 
