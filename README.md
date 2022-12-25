@@ -59,43 +59,42 @@ mysql> delimiter ;
 ---
 
 ## transaction
-
----
-
 - 단일한 논리적 작업 단위를 말한다 (a single logical unit of work)
 - 논리적인 이유로 여러 SQL 문들을 단일 작업으로 묶어서 나눠질 수 없게 만드는 것이 transaction 이다.
 - transaction의 SQL문들 중에 일부만 성공해서 DB에 반영되는 일은 일어나지 않는다.
 - spring의 경우 @transactional이 붙은 메서드는 transaction을 통해 작업이 이뤄진다.
+---
 
-> 일반적인 트랜잭션의 사용 패턴
+#### `일반적인 트랜잭션의 사용 패턴`
+
 1. transaction을 시작(begin)한다   (start transaction)
 2. 데이터를 읽거나 쓰는 등의 SQL문들을 포함해서 로직을  수행한다.
 3. 일련의 과정들이 문제없이 동작했다면 transaction을 commit 한다 (영구적 저장)
 4. 중간에 문제가 발생한다면 transaction을 rollback 한다 (원상 복구)
 
 
-> ACID(Atomicity Consistency Isolation Durability)
+#### `ACID(Atomicity Consistency Isolation Durability)`
 
 - 트랜잭션이 지녀야하는 4가지 속성을 말한다. 
 
-1. Atomicity(원자성)
+> 1. Atomicity(원자성)
 - All or Nothing
 - transaction은 논리적으로 쪼개질 수 없는 작업 단위이기 때문에 내무의 SQL문들이 모두 성공해야 한다.
 - 중간에 SQL문이 실패하면 지금까지의 작업을 모두 취소하여 아무 일도 없었던 것처럼 rollback 한다.
 
-2.Consistency(일관성)
+> 2.Consistency(일관성)
 - transaction은 DB 상태를 consistent 상태에서 또 다른 consistent 상태로 바꿔주는 것을 의미한다.
 - constraints , trigger 등을 통해 DB에 정의된 rules을 transaction이 위반했다면 rollback해야한다.
 - transaction 이 DB에 정의된 rule을 위반했는지는 DBMS가 commit 전에 확인하고 알려준다.
 - 그 외의 application 관점에서 transaction이 consistent 하게 동작하는지는 개발자가 챙겨야한다.
 
-3. Isolation(격리)
+> 3. Isolation(격리)
 - 여러 transaction 들이 동시에 실행될 때도 혼자 실행되는 것처럼 동작하게 만들어야 한다.
 - DBMS는 여러 종류의 isolation level을 제공한다.
 - 개발자는 Isolation level 중 어떤 level로 transaction을 동작시킬지 설정할 수 있다.
 - concurrency control의 주된 목표가 isolation 이다.
 
-4.Durability(영존성)
+> 4.Durability(영존성)
 - DB system에 문제가 생겨도 commit된 transaction은 db에 영구적으로 저장된다.
 - 영구적으로 저장한다 라고 할때 일반적으로 비휘발성 메모리(hdd , sdd)에 저장함을 의미한다.
 - 기본적으로 transaction의 durability는 DBMS가 보장한다.
@@ -104,8 +103,11 @@ mysql> delimiter ;
 ---
 
 ### Concurrency control
+- 어떤 schdule도 serializable하고 recoverity하게 만드는 것을 의미한다.
+- transaction의 속성인 ACID 중 Isolation과 밀접한 관련이 있다. 
+---
 
-> schedule
+#### ` schedule`
 
 - 여러 transaction들이 동시에 실행될 때 각 transaction에 속한 operation들의 실행순서를 말한다.
 - 각 transaction내의 opertaion들의 순서는 바뀌지 않는다.
@@ -114,12 +116,82 @@ mysql> delimiter ;
 - non-serial schedule은 non-block으로 동작하기 때문에 동시성이 높아 같은 시간 동안 더많은 transaction들을 처리할 수 있다.
 - 하지만 non-serial schedule을 사용할 경우 데이터의 불일치가 일어날 수 있기 떄문에 Concurrency control(동시성 제어)가 필요하다
 
-> conflict
 
-- 두개의 operation이 아래의 세가지 조건을 모두 만족하면 conflict 하다 할 수 있다.
+#### `conflict`
+
+- 두개의 operation이 아래의 세가지 조건을 모두 만족하면 conflict라 할 수 있다.
 - 하나는 read 하나는 write로 이뤄진 conflict를 read-write conflict라 한다.
 - conflict operation은 순서가 바뀌면 결과도 바뀐다.
+
 1. 서로 다른 transaction 소속이다
 2. 같은 데이터에 접근한다.
 3. 최소 하나는 write operation이여야 한다.
 
+#### `conflict equipvalent`
+
+- serial-schedule만 사용하기엔 성능에 문제가 있기 때문에 non-serial-schedule을 같이 사용할 수 있는 방법이 필요했다
+- 하지만 non-serial-schedule은 데이터 정합성에 문제가 생길 수 있기 때문에 이를 해결하기 위해 
+- conflict serializable한 non-serial-schedule만 실행을 허용하도록하는 방식을 사용하여 충돌을 막는다.
+
+#### `conflict equipvalent의 조건`
+
+<img width="498" alt="스크린샷 2022-12-25 오전 1 10 20" src="https://user-images.githubusercontent.com/51349774/209443663-e3bcdab5-2f43-4c8e-880a-d0a8ed7f2320.png">
+
+
+- 두 schedule은 같은 transaction들을 가진다.
+- 어떤 conflicting operations의 순서도 양쪽 schedule 모두 동일하다.
+- non-serial schedule이 serial schedule과  conflict equivalent할때 이를 conflict serializable 하다고 한다
+
+#### `RDBS에서 conflict serializable을 구현하는 방식`
+
+- 여러 transaction을 동시에 실행해도 schedule이 conflict serializable하도록 보장하는 프로토콜을 적용하는 방식으로 구현된다.
+
+
+#### `Recoverivility`
+
+> unrecoverable schedule
+- schedule 내에서 commit된 transaction이 rollback된 transaction이 write한 데이터를 읽은 경우를 말한다.
+- rollback을 해도 이전 상태로 회복이 불가능할 수 있기 때문에 DBMS에서는 이런 schedule을 허용해선 안된다.
+
+
+<img width="320" alt="스크린샷 2022-12-25 오전 3 18 56" src="https://user-images.githubusercontent.com/51349774/209447347-93500416-e4e5-40b4-9044-358bc8d90e78.png">
+
+
+> recoverable schedule
+- schedule안에서 어떤 transaction도 자신이 읽은 데이터를 write한 transaction이 먼저 commit/aboart 하기 전까지는
+- commit을 하지 않아야 하며 이런 스캐쥴을 recoverable schedule이라 하며 Recoverivility를 갖었다고 한다.
+
+> casacading rollback
+- 하나의 transaction이 rollback 하면 의존성이 있는 다른 transaction도 rollback하는 rollback 방식을 말한다.
+- 여러 transaction의 rollback이 연쇄적으로 일어나면 처라하는 비용이 많이 든다.
+
+> cascadless schedule
+- schedule 내에서 어떤 transaction도 commit 되지 않은 transaction들이 write 한 데이터는 읽지 않는 스캐쥴을 말한다.
+- avoid cascade rollback 이라고도 부른다.
+
+> strict schedule 
+- schedule 내에서 어떤 transaction도 commit 되지 않은 transaction들이 write 한 데이터는 읽지도 쓰지도 않는 스캐쥴을 말한다.
+
+ 
+#### `Isolation level`
+- 애플리케이션 설계자는 Isolation level을 통해 전체 처리량과 데이터 일관성 사이에 어느 정도 거래(trade)를 할 수 있다
+- dirty read,non-repeatable read,phantom read 세가지 중 어떤 것을 허용하는지에 따라 level이 구분된다.
+
+> 여러개의 transaction 동시에 실행될 때 발생할 수 있는 이상 현상
+
+- dirty read :한 트랜잭션이 write한 커밋되지 않은 데이터를 읽어 다른 트랜잭션의 값이 오염되는 경우를 말한다.
+- non-repeatable read (fuzzy read): 같은 데이터를 한 트랜잭션에서 두번 읽었을때 다른 트랜잭션의 영향을 받아 두개의 값이 다른 경우를 말한다.(isolation 관점에선 여러 트랜잭션이 동시에 실행되도 각각의 트랜잭션은 독립적으로 실행되어야한다.)
+- phantom read : 같은 데이터를 한 트랜잭션에서 두번 읽었을때 다른 트랜잭션의 영향을 받아 없던 데이터가이 생기는 경우를 말한다.
+
+> Isolation level 분류
+- 위의 이상 현상은 모두 발생하지 않도록 만들 수 있지만 제약사항이 많아져 동시성이 낮아지고 처리 가능한 트랜잭션 수가 줄어 db전체 처리량(throughput)이 하락하게된다
+- 때문에 일부 이상현상은 허용하는 몇가지 level을 만들어서 사용자가 필요에 따라 적절하게 선택할 수 있도록 구분한 것이 Isolation level이다.
+
+
+
+|Isolation level|Dirty read|Non-repeatable read|phantom read|
+|----|----|----|----|
+|Read uncommitted|O|O|O|
+|Read committed|X|O|O|
+|Repeatable read|X|X|O|
+|Serializable|X|X|X|
