@@ -2,7 +2,7 @@
 
 ---
 
-### trigger
+### `trigger`
 
 - 데이터베이스에서 어떤 이벤트(insert,update,delete)가 발생했을때 자동적으로 실행되는 프로시저를 말한다.
 
@@ -197,3 +197,40 @@ mysql> delimiter ;
 |Read committed|X|O|O|
 |Repeatable read|X|X|O|
 |Serializable|X|X|X|
+
+#### `snapshot isolation (다시 정리 필요)`
+
+
+#### `data lock`
+
+- 운영체제에서의 데이터 락과 같은 개념이다 
+- 같은 데이터에 대한 
+
+> `read-lock 과 write-lock`
+
+- read-lock은 read 작업에 대해선 여러 트랜잭션의 접근을 허용하지만  write작업은 허용하지 않는다(읽은 데이터를 보호하기 위함).
+- write-lock은 read/write 작업 모두에 대해 다른 트랜잭션의 접근을 막는다.
+
+> `data lock을 사용한 동시성 제어`
+- lock 만으로 serializability를 보장할 수는 없다.
+- 프로토콜을 통해 데이터 락을 구현할 수 있다.
+
+> `2PL protocol (two phase locking)`
+
+- 데이터 락으로 인해 발생하는 데이터 이상 현상을 막기위한 프로토콜이다.
+- 초창기 DB에 주로 사용되던 방식이다 (오늘날 DB는 MVCC를 주로 사용)
+- lock을 취득하는 phase(expanding phase(growing phase))와  lock을 반환하는 phase(shrinking phase (contracting phase))를 구분한다
+- 트랜잭션에서 모든 locking operation이 최초의 unlock operation보다 먼저 수행되도록 한다 
+- 한번 unlock이 실행되면 그 후론 lock을 취득하려하지 않아야한다.
+
+
+|2PL protocol의 종류 |    |
+|----|----|
+|conservative 2PL| * 모든 lock을 취득한 뒤 트랜잭션을 시작한다 <br/> *deadlock-free하다 <br/> *실용적이지 못하다(락을 한번에 모두 취득하기 어려운 상황이 발생할 수 있다.)|
+|stript 2PL|* strict schedule을 보장하는 2PL이다. <br/> * recoverablility를 보장하며 write-lock을 commit/rollback시에 반환하도록한다.
+|strong stript 2PL|* strict schedule을 보장하는 2PL이다. <br/> * recoverablility를 보장하며 write-lock/read-lock을 commit/rollback시에 반환하도록한다.|
+
+MVCC
+
+---
+
