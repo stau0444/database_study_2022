@@ -234,7 +234,7 @@ MVCC
 
 ---
 
-### `데이터 정규화`
+### `데이터 정규화` (보충 필요)
 
 ---
 
@@ -263,3 +263,111 @@ MVCC
 
 #### `functional dependency`
 - 한 테이블에 있는 두 개의 attribute 집합 사이의 제약
+
+
+---
+### `INDEX`
+---
+- 조건에 만족하는 튜플들을 빠르게 조회하기 위해 사용되는 자료구조이다.
+- 상황에 따라서는 빠르게 정렬(order by) 혹은 그룸핑(group by)하기 위해서도 사용된다.
+- 쿼리문에 where 절의 컬럼에 인덱스가 걸려 있지 않다면 , full scan(table scan)으로 데이터가 찾아진다
+- 이떄의 시간복잡도는 데이터 개수(N)만큼 O(N)[big O n]이 된다.
+- 만약 해당 컬럼에 인덱스가 걸려있고 b-tree 기반이라면 시간복잡도는 O(logN)으로 줄어든다
+- 대부분의 RDBMS에서는 primary key에는 index가 자동으로 달린다.
+
+``` java
+
+player table
+
++------------+--------------+------+-----+---------+-------+
+| Field      | Type         | Null | Key | Default | Extra |
++------------+--------------+------+-----+---------+-------+
+| id         | int          | NO   | PRI | NULL    |       |
+| name       | varchar(255) | YES  |     | NULL    |       |
+| team_id    | int          | YES  |     | NULL    |       |
+| backnumber | int          | YES  |     | NULL    |       |
++------------+--------------+------+-----+---------+-------+
+
+//index 생성 (이미 만들어진 테이블에 인덱스 걸어주기)
+
+// 중복이 허용되는 컬럼에 인덱스를 걸어줄 때
+mysql> create index player_name_idx on player(name);
+
+// 튜플을 유니크하게 식별할수 있는 키에 인덱스를 걸어줄 떄
+// 아래같이 여러 컬럼이 한번에 묶여 인덱스로 사용되는 것을 multicolumn index 혹은 composite index라 한다.
+// 
+mysql> create unique index team_id_backnum_idx on player(team_id,backnumber);
+
+
+//테이블 생성하며 인덱스 함께 생성하는 방식
+
+```java
+
+CREATE TABLE player( 
+        id int primary key, 
+        name varchar(20) not null, 
+        team_id int, 
+        backnumber int,
+        INDEX player_name_idx (name), // 이 방식에서는 인덱스 이름이 생략가능하다.
+        UNIQUE INDEX team_id_backnumber_idx (team_id,backnumber) 
+    );
+
+```
+
+//인덱스 사용 명령문 
+SHOW INDEX FROM player;
+
+```
+
+### `b-tree 기반 index 동작 방식`
+
+<img width="536" alt="스크린샷 2022-12-28 오전 1 05 22" src="https://user-images.githubusercontent.com/51349774/209691603-08788bb4-2cc7-4fc2-bb3e-a27c1255c458.png">
+
+
+- 위 그림처럼 a에 대한를 걸면 인덱스 테이블이 생긴다.
+- 인덱스 테이블에는 인덱스가 걸린 테이블 기준으로 데이터가 정렬되고 pointer라는 컬럼에는 오른쪽의 실제 튜플을 가리키는 값이 저장된다.
+- 만약 where a = 4; 라는 쿼리가 날라오면 db에서는 인덱스 테이블에서 binary search(이진 탐색)으로 데이터를 찾아낸다.
+- 만약 where a= 2 and b = 20; 이라는 쿼리가 날라온다면 a에 대하여 인덱스 테이블을 통해 찾고 찾아진 튜플들에 대해 실제 테이블로 찾아가 b 값을 비교하여 찾아낸다.
+- where a= 2 and b = 20; 같은 쿼리에서는 인덱스가 걸린 a의 경우 빠르게 찾아내지만 b를 찾아내는 과정에서 결국 full scan이 일어난다.
+- composite index를 사용하여 a , b를 묶어서 인덱스로 관리해야 한다.
+- composite index의 경우 생성할때 설정한 컬럼중 왼쪽 컬럼을 기준으로 먼저 정렬이되고 중복되는 값들에 대해서 오른쪽 컬럼을 기준으로 다시한번 정렬된다.
+- 한 컬럼에 인덱스가 여러개 걸려있다면 DB의 optimizer가 최적의 index를 찾아서 사용한다.
+- 간혹 optimizer가 이상한 인덱스를 고르는 경우 직접 사용될 Index 명시하고 싶다면 쿼리 문에 USE INDEX(인덱스명) 혹은 FOR INDEX(인덱스명)을 사용할 수 있다.
+- FORCE INDEX는 더 강제적이며 무조건 해당 인덱스가 사용되는 것은 아니고 Optimaizer의 판단하에 아니다 싶으면 fullscan으로 동작한다.
+- 특정 인덱스를 제외시키고 싶다면 IGNORE INDEX(인덱스명)을 사용할 수 있다.
+- ex)EXPLANE SELECT * FROM player USE INDEX(backnumber_idx) WHERE backnumber = 7;
+- ex)EXPLANE SELECT * FROM player FORCE INDEX(backnumber_idx) WHERE backnumber = 7;
+- ex)EXPLANE SELECT * FROM player IGNORE INDEX(backnumber_idx) WHERE backnumber = 7;
+- 실제 어떤 인덱스가 사용되는지는 EXPLANE + 쿼리문으로 확인할 수 있다.
+- ex)EXPLANE SELECT * FROM player WHERE backnumber = 7;
+그림고
+
+#### `covering index`
+- 조회하는 attribute를 index가 모두 cover 하는 인덱스를 말한다.
+- 따로 본테이블에 가서 데이터를 조회하지 않아도 되기 때문에 조회 성능이 더 빠르다.
+
+#### `hash index`
+
+- hash table을 사용하여 index를 구현한다
+- 시간복잡도 O(1)의 성능
+- rehashing(데이터가 모두차서 hash 테이블의 size를 늘려줄때)
+- equality( = , !=) 비교만 가능하다, range 비교(<= , => ,< ,>)는 불가능함
+- multicolumn index의 경우 전체 attributes에 대한 조회만 가능하다 (b-tree 에서는 일부분에 해당하는 조건도 인덱스 사용이 가능)
+
+#### `full scan이 좋은 경우`
+- 데이터가 적을때
+- 조회하려는 데이터가 테이블의 상당 부분을 차지할 때
+
+
+#### `index 사용 주의점`
+
+- 인덱스가 생기는 것은 해당 테이블에 연관된 또다른 테이블이 생기는 것이고 원래 테이블에 write(update , delete, insert) 작업이 일어난다면
+- 연관된 index 테이블에도 write 작업이 모두 일어나고 정렬도 새로되야 되기 때문에 오버헤드가 발생한다.
+- order by나 group by 에도 index 가 사용될 수 있다.
+- foreign key에는 index가 자동으로 생성되지 않을 수 있다. (mysql에서는 자동적으로 생성됨)
+- 이미 데이터가 몇 백만건 이상있는 테이블에 인덱스를 생성하는 경우 시간이 몇 분이상 소요될 수도 있고 DB성능에 악영향을 미치기 때문에
+  잘 고려해서 추가해줘야한다.
+- 
+ 
+- 인덱스가 생기는 것은 해당 테이블에 연관된 또다른 테이블이 생기는 것이고 원래 테이블에 write 작업이 일어난다면상
+- 인덱스가 생기는 것은 해당 테이블에 연관된 또다른 테이블이 생기는 것이고 원래 테이블에 write 작업이 일어난다면
