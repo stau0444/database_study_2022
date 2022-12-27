@@ -311,13 +311,13 @@ CREATE TABLE player(
         INDEX player_name_idx (name), // 이 방식에서는 인덱스 이름이 생략가능하다.
         UNIQUE INDEX team_id_backnumber_idx (team_id,backnumber) 
     );
-
-```
-
+    
 //인덱스 사용 명령문 
 SHOW INDEX FROM player;
 
 ```
+
+
 
 ### `b-tree 기반 index 동작 방식`
 
@@ -367,7 +367,12 @@ SHOW INDEX FROM player;
 - foreign key에는 index가 자동으로 생성되지 않을 수 있다. (mysql에서는 자동적으로 생성됨)
 - 이미 데이터가 몇 백만건 이상있는 테이블에 인덱스를 생성하는 경우 시간이 몇 분이상 소요될 수도 있고 DB성능에 악영향을 미치기 때문에
   잘 고려해서 추가해줘야한다.
-- 
- 
-- 인덱스가 생기는 것은 해당 테이블에 연관된 또다른 테이블이 생기는 것이고 원래 테이블에 write 작업이 일어난다면상
-- 인덱스가 생기는 것은 해당 테이블에 연관된 또다른 테이블이 생기는 것이고 원래 테이블에 write 작업이 일어난다면
+
+
+- 파티셔닝은 테이블을 나누는 것을 말한다 vertical(컬럼) , horizontal(로우) 두가지 기준으로 나눈다
+- sharding 은  horizontal 파티셔닝한 것을 다른 서버에 저장하여 부하를 분산하는 것을 말한다
+- 레플리카는 원본 db서버에 복제본 서버를 두는 것을 말하며 데이터가 똑같이 레플리카 서버로 복제된다.
+- 원본서버에 문제발생시 복제본서버를 바로 사용하여 HA(high availaty)가 보장되고 
+- read 작업을 분산하여 부하 분산도 가능하도록 한다.
+
+
