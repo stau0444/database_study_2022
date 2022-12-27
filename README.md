@@ -234,3 +234,32 @@ MVCC
 
 ---
 
+### `데이터 정규화`
+
+---
+
+#### `DB schema 설계가 잘못되면 생기는일들`
+
+> 1. 중복 데이터 문제
+- 하나의 테이블에 여러 관심사의 정보를 하나의 테이블에 모아놓을 경우 
+- 중복된 데이터가 발생할 수 있으며 저장 공간 낭비 , 데이터 불일치 가능성이 존재하게된다.
+- insert(insertion anomalies),delete(deletion anomalies),update(update anomalies)시에 null 값을 많이 사용하게되며 로우가 지저분해진다.
+
+> 2.spurious tuples (가짜 튜플)
+- natural join시 가짜 튜플들이 생겨 날 수 있다.
+
+> 3. null 값이 많아짐으로 인한 문제점들
+- null 값이 있는 column으로 join 하는 경우 상황에 따라 예상과 다른 결과가 발생한다.
+- null 값이 있는 colmn에 aggregate function을 사용했을 때 주의가 필요하다.
+- 불필요한 storage 낭비가 일어난다
+
+#### `바른 DB schema 설계 규칙`
+
+1. 의미적으로 관련있는 속성들끼리 테이블을 구성한다
+2. 중복 데이터를 최대한 허용하지 않도록 설계
+3. join 수행시 가짜 데이터가 생기지 않도록 설계
+4. 되도록이면 null 값을 줄일 수 있는 방향으로 설계
+
+
+#### `functional dependency`
+- 한 테이블에 있는 두 개의 attribute 집합 사이의 제약
