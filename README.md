@@ -405,3 +405,52 @@ SHOW INDEX FROM player;
 - wait timeout에 설정한 시간 만큼 기다리고 응답이 없을시 해당 커넥션을 close한다.
 - 시간이 카운트되고 만약 시간내에 요청이 도착하면 카운트값을 다시 0으로 초기화한다.
 
+#### ` 백엔드 서버 설정 (hikari CP)`
+
+> `minimumidle`
+
+- pool에서 유지하는 최소한의 idle connection(대기 중인 커넥션)의 수를 설정한다.
+ 
+
+> `maximumPoolSize`
+
+- pool이 가질 수 있는 최대 connection의 수 
+- idle 과 active(in-use)connection을 합친 최대 수
+
+> `maximumPoolSize와 minimumidle의 연관관계와 사용 권장사항`  
+- idle connections(대기 커넥션 수) <= minimumidle && total connections(대기+active 커넥션의 총합) < maximumPoolSize
+- 위의 상황이라면 추가로 커넥션을 만들어낸다
+- maximumPoolSize가 minimumidle보다 더 높은 우선순위를 갖는다.
+- 기본값은 maximumPoolSize = minimumidle 이다.(커넥션 값이 고정됨을 의미한다)
+- 커넥션을 만들어 내는 것이 시간이 걸리는 일이기 때문에 트래픽이 많이 몰릴 경우 무한정으로 커넥션을 만들어내는 것은 서버에 부담이 된다.
+
+> `maxLifetime`
+
+- pool에서 connection의 최대 수명
+- 생성된 커넥션이 maxLifetime을 넘기면 idle일 경우에는 바로 제거되고  active일 경우 pool에 반환된 후에 제거된다.
+- 만약 minimumIdle 보다 적어진다면 커넥션이 새로 만들어진다.
+- pool로 반환이 안되면 maxLifetime을 지나도 커넥션이 계속 유지되기 때문에 다쓴 커넥션은 pool로 반환을 잘 시켜주는 것이 중요하다
+- 백엔드서버에서 maxLifetime이 얼마남지 않은 커넥션을 통해 요청이 날라가다가 DB서버에 도착하기전에 DB서버의 wait_time이 지나 커넥션이 사용할 수 없게될 수 있기때문에 DB의 wait_time 보다 DBCP의 maxLifetime을 몇초정도 짧게 설정하는게 권장된다. 
+
+> `connectionTimeOut`
+- 백엔드 서버 요청이 DBCP에게 커넥션을 할당받기까지 기다리는 시간을 말한다 
+- 백엔드 서버 트래픽이 많아질 경우 커넥션을 할당받기까지 시간이 걸릴 수도 있기 때문에
+- connectionTimeOut에 설정한 시간이 지나면 기다리는 걸 멈추고 예외를 날린다.
+- 요청의 성격에 따라 적절하게  connectionTimeOut을 설정해 주는 것이 중요하다.
+
+
+#### `적절한 커넥션 수를 찾기 위한 과정`
+
+> `백엔드 서버`
+- 모니터링 환경 구축 (서버 리소스(cpu,mem) , 서버 스레드 수 , DBCP)
+- 백엔드 시스템 부하 테스트
+- request per second(초당 처리량) / avg response time(리퀘스트 평균 응답시간 api 성능) 확인
+- thread per request 모델이라면 active thread 확인(thread pool에서 thread 수를 늘려준다)
+- 백엔드 시스템에 문제가 없다면 DBCP maximumPoolsize를 조금씩 늘려가며  부하테스트를 반복하여 적절한 커넥션 수를 찾는다
+- 백엔드 서버 수를 고려하여 DBCP의 maxPoolSize를 결정한다.
+
+> `DB 서버`
+- secondary 추가 (replication)
+- ceche layer 추가
+- sharding
+
